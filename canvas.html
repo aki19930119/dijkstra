@@ -1,0 +1,279 @@
+<!Doctype html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>ダイクストラシステム</title>
+    <style>
+        *{
+            margin: 0; //margin=要素の外側の余白
+            padding: 0; //padding=要素の内側の余白
+        }
+        #container{
+            width: 800px;//要素の幅
+            height: 800px;//要素の高さ
+            margin: 0 auto;
+            padding: 10px 10px;
+            text-align: center;//ブロックコンテナ内の行の揃え位置・均等割付を指定する
+        }
+        #mainCanvas{
+            background: white;
+            border: 1px solid black;
+        }
+        #controlPanel{
+            width: 100%;
+            border: 1px solid black;
+        }
+        select{
+            width: 200px;
+            height: 30px;
+            font-size: 20px;
+        }
+        #calcBtn {
+            margin: 20px 0;
+            width: 300px;
+            height: 60px;
+            font-size: 25px;
+        }
+        #startVertex {
+            background: blue;
+            color:white;
+        }
+        #endVertex{
+            background: red;
+            color: white;
+        }
+
+
+    </style>
+</head>
+<body>
+<div id="container">
+    <canvas id="mainCanvas"></canvas>
+    <table id="controlPanel">
+        <tr>
+            <td>
+                開始地点 :
+                <select id="startVertex">
+                    <option value=""></option>
+                </select>
+            </td>
+            <td>
+                終了地点:
+                <select id="endVertex">
+                    <option value=""></option>
+                </select>
+            </td>
+        </tr>
+        <tr>
+            <td colspan="2">
+                <button id="calcBtn">最短経路算出</button>
+            </td>
+        </tr>
+    </table>
+</div>
+
+<script>
+    var CANVAS_width  = 800;
+    var CANVAS_height = 400;
+    var VERTEX_SIZE = 40;
+    var ctx = null;
+    var vertexes = [];
+    var paths = [];
+    var selectVertexFrom = null;
+    var selectVertexTo = null;
+    var startVertex = null;
+    var endVertex = null;
+
+//関数　頂点
+    function Vertex(px,py) {
+        this.px =px;
+        this.py =py;
+    }
+//関数　経路
+    function Path(from,to,dist) {
+        this.from =from;
+        this.to =to;
+        this.dist =dist;
+    }
+//関数　描く
+    function draw() {
+        //頂点の描画
+        for(var i = 0; i < vertexes.length; i++) {
+            var v = vertexes[i];
+            drawVertex(v.px, v.py, i);
+        }
+        //経路を描画
+        for(var i = 0; i < paths.length; i++){
+            var p = paths[i];
+            drawPath(p.from,p.to,p.dist);
+        }
+    }
+    //関数　頂点の描画
+        function drawVertex(x,y,id) {
+            if (id === selectVertexFrom) {
+                ctx.strokeStyle = 'rgb(0,255,0)';
+            } else if (id === startVertex) {
+                ctx.strokeStyle = 'blue';
+            } else if (id === endVertex) {
+                ctx.strokeStyle = 'red';
+            } else {
+                ctx.strokeStyle = 'rgb(0,0,0)';
+            }
+            ctx.lineWidth = 5;
+            //建物を描画
+            ctx.strokeRect(x, y, VERTEX_SIZE, VERTEX_SIZE);
+            //IDを描画
+            ctx.font = "25px 'MS ゴシック'";
+            ctx.textAlign = 'center';
+            ctx.fillText(id, x + VERTEX_SIZE / 2, y + VERTEX_SIZE / 2 + 10);
+
+        }
+    //関数　経路の描画
+    function drawPath(from,　to, dist) {
+        var vertexFrom = vertexes[from];
+        var vertexTo = vertexes[to];
+        var sx = vertexFrom.px + VERTEX_SIZE/2;
+        var sy = vertexFrom.py + VERTEX_SIZE/2;
+        var ex = vertexTo.px + VERTEX_SIZE/2;
+        var ey = vertexTo.py + VERTEX_SIZE/2;
+        ctx.strokeStyle = 'rgb(0,0,0)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(sx,sy);
+        ctx.lineTo(ex, ey);
+        ctx.stroke();
+        ctx.font =  "25px 'MS ゴシック'";
+        ctx.textAlign = 'center';
+        ctx.fillText(dist, sx+(ex-sx)/2 + 10, sy+(ey-sy)/2-10);
+    }
+    //関数　キャンバスクリック
+    function clickCanvas(e) {
+        var rect = e.target.getBoundingClientRect();
+        mx = e.clientX - Math.floor(rect.left);
+        my = e.clientY - Math.floor(rect.top);
+
+        //建物描画か建物選択かを判定
+        var isSelect = false;
+        for (var i = 0; i < vertexes.length; i++) {
+            var v = vertexes[i];
+            if (mx >= v.px && +VERTEX_SIZE && my >= v.py && my <= v.py + VERTEX_SIZE) {
+                isSelect = true;
+                if (selectVertexFrom === null) {
+                    selectVertexFrom = i;
+                } else if (selectVertexFrom === i) {
+                    //選択済みの場合は選択解除
+                    selectVertexFrom = null;
+                } else {
+                    selectVertexTo = i;
+                    var dist = window.prompt('頂点' + selectVertexFrom + '〜頂点' + selectVertexTo + 'の距離を入力してください。', '')
+                    if (dist !== null && dist !== '') {
+                        paths.push(new Path(selectVertexFrom, selectVertexTo, parseInt(dist)));
+                        paths.push(new Path(selectVertexTo, selectVertexFrom, parseInt(dist)));
+                        selectVertexTo = selectVertexFrom = null;
+                    }
+                }
+                draw();
+                break;
+            }
+        }
+
+        if (!isSelect) {
+            var id = vertexes.length;
+            drawVertex(mx, my, id);
+
+            var selectStarVertex = document.createElement('option');
+            selectStarVertex.text = '頂点' + id;
+            selectStarVertex.value= id;
+            document.getElementById('startVertex').appendChild(selectStarVertex);
+
+            var endStarVertex = document.createElement('option');
+            endStarVertex.text = '頂点' + id;
+            endStarVertex.value= id;
+            document.getElementById('endVertex').appendChild(endStarVertex);
+
+            vertexes.push(new Vertex(mx, my));
+        }
+    }
+    //関数　初めの頂点の変更
+    function changeStartVertex(){
+        var selectStartVertex = document.getElementById('startVertex');
+        var index = selectStartVertex.selectedIndex;
+
+        if(index !==0){
+            startVertex = parseInt(selectStartVertex.options[index].value);
+            //ハイライトのために再描画
+            draw();
+        }
+    }
+    //関数　最後の頂点の変更
+    function changeEndVertex(){
+        var selectEndVertex = document.getElementById('endVertex');
+        var index = selectEndVertex.selectedIndex;
+
+        if(index !==0){
+            endVertex = parseInt(selectEndVertex.options[index].value);
+            //ハイライトのために再描画
+            draw();
+        }
+    }
+    //関数　描画の道
+    function drawRoot(rootStr) {
+        root = rootStr.split(',');
+        ctx.strokeStyle = 'red';
+        ctx.lineWidth = 3;
+        for (var i =0; i< root.length-1; i++){
+            ctx.beginPath();
+            var sx = vertexes[root[i]].px + VERTEX_SIZE/2;
+            var sy = vertexes[root[i]].py + VERTEX_SIZE/2;
+            var ex = vertexes[root[i+1]].px + VERTEX_SIZE/2;
+            var ey = vertexes[root[i+1]].py + VERTEX_SIZE/2;
+            ctx.moveTo(sx,sy);
+            ctx.lineTo(ex,ey);
+            ctx.stroke();
+
+        }
+    }
+    //関数　計算
+    function calc(){
+        if (startVertex === null) {
+            alert('開始地点を選択してください。');
+        }else if(endVertex === null){
+            alert('終了地点を選択してください。')
+        }else {
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '/calc');
+            xhr.setRequestHeader('Content-Type', 'application/json');
+
+            xhr.addEventListener('load',function ()
+            {
+                var response = JSON.parse(xhr.responseText);
+                console.log(response);
+                drawRoot(response.root);
+            });
+            var data = {
+                num: vertexes.length, //頂点の数
+                paths: paths, //経路の情報
+                start: startVertex,　//開始地点
+                end: endVertex //終了地点
+            };
+            xhr.send(JSON.stringify(data));
+        }
+    }
+
+    window.onload = function () {
+        canvas =document.getElementById('mainCanvas');
+        canvas.width = CANVAS_width;
+        canvas.height= CANVAS_height;
+        ctx = canvas.getContext('2d');
+        canvas.onclick = clickCanvas;
+
+        var selectStartVertex = document.getElementById('startVertex');
+        selectStartVertex.onchange = changeStartVertex;
+
+        var selectEndVertex = document.getElementById('endVertex');
+        selectEndVertex.onchange = changeEndVertex;
+        document.getElementById('calcBtn').onclick = calc;
+    }
+</script>
+</body>
+</html>
