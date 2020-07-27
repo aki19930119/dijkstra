@@ -6,7 +6,7 @@ import (
 	"html/template"
 	"math"
 	"net/http"
-	"sample/graph"
+	"graph/graph"
 	"strconv"
 )
 //リクエストデータの構造
